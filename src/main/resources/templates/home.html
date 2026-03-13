@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="pt" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRH - API Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        /* Header */
+        .header {
+            background: white;
+            border-radius: 20px 20px 0 0;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            color: #333;
+            font-size: 2.2em;
+        }
+        .header h1 span {
+            color: #667eea;
+            font-weight: 300;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 15px;
+            text-align: center;
+            min-width: 120px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .stat-card h3 {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        .stat-card .number {
+            font-size: 2em;
+            font-weight: bold;
+        }
+        
+        /* Main Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            height: fit-content;
+        }
+        .sidebar h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .nav-tab {
+            flex: 1;
+            padding: 12px;
+            background: #f8f9fa;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+            min-width: 100px;
+        }
+        .nav-tab.active {
+            background: #667eea;
+            color: white;
+        }
+        .nav-tab:hover {
+            background: #e9ecef;
+        }
+        .nav-tab.active:hover {
+            background: #5a67d8;
+        }
+        
+        /* Endpoint List */
+        .endpoint-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .endpoint-item {
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            cursor: pointer;
+            border-left: 4px solid transparent;
+            transition: all 0.3s;
+        }
+        .endpoint-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+        .endpoint-item.selected {
+            background: #e3f2fd;
+            border-left-color: #667eea;
+        }
+        .endpoint-method {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.75em;
+            margin-right: 8px;
+        }
+        .method-get { background: #e3f2fd; color: #1976d2; }
+        .method-post { background: #e8f5e9; color: #388e3c; }
+        .method-put { background: #fff3e0; color: #f57c00; }
+        .method-patch { background: #f3e5f5; color: #7b1fa2; }
+        .method-delete { background: #ffebee; color: #d32f2f; }
+        .endpoint-url {
+            font-family: monospace;
+            font-size: 0.85em;
+            color: #333;
+        }
+        .endpoint-desc {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 4px;
+            margin-left: 42px;
+        }
+        
+        /* Main Content */
+        .main-content {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        /* Request Panel */
+        .request-panel {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .request-panel h3 {
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .method-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .form-group textarea {
+            min-height: 250px;
+            font-family: monospace;
+        }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #38a169;
+        }
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
+        .btn-info {
+            background: #4299e1;
+            color: white;
+        }
+        .btn-info:hover {
+            background: #3182ce;
+        }
+        
+        /* Response Panel */
+        .response-panel {
+            background: #1a202c;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .response-header {
+            background: #2d3748;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+        .response-header h3 {
+            color: white;
+            margin: 0;
+        }
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .status-success {
+            background: #48bb78;
+            color: white;
+        }
+        .status-error {
+            background: #f56565;
+            color: white;
+        }
+        .response-body {
+            padding: 20px;
+            color: #a0aec0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        /* Loading */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #a0aec0;
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Quick Actions */
+        .quick-actions {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .quick-actions h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .quick-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .quick-btn {
+            padding: 8px 15px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+        .quick-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        /* Info Cards */
+        .info-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .info-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .info-card h4 {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        .info-card .value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        
+        /* Footer */
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: white;
+            opacity: 0.8;
+            font-size: 0.9em;
+        }
+
+        /* Table Styles */
+        .table-responsive {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        tr:hover {
+            background: #f7fafc;
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+        .toast {
+            min-width: 300px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="container">
+        <!-- Header com Estatísticas -->
+        <div class="header">
+            <div>
+                <h1>SRH <span>API Explorer</span></h1>
+                <p style="color: #666;">Interface de Teste da API</p>
+            </div>
+            <div class="stats" id="statsHeader">
+                <div class="stat-card" onclick="quickAction('listarFuncionarios')">
+                    <h3>Total</h3>
+                    <div class="number" id="totalFuncionarios">0</div>
+                </div>
+                <div class="stat-card" style="background: #48bb78;" onclick="quickAction('listarFuncionarios')">
+                    <h3>Ativos</h3>
+                    <div class="number" id="funcionariosAtivos">0</div>
+                </div>
+                <div class="stat-card" style="background: #f56565;" onclick="quickAction('listarFuncionarios')">
+                    <h3>Inativos</h3>
+                    <div class="number" id="funcionariosInativos">0</div>
+                </div>
+                <div class="stat-card" style="background: #17a2b8;" onclick="quickAction('testarIntegracao')" title="Clique para testar API de Vendas">
+                    <h3>API Vendas</h3>
+                    <div class="number" id="apiVendasStatus">⚪</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Grid Principal -->
+        <div class="main-grid">
+            <!-- Sidebar com Endpoints -->
+            <div class="sidebar">
+                <h2>📌 Endpoints</h2>
+                
+                <!-- Tabs -->
+                <div class="nav-tabs">
+                    <button class="nav-tab active" onclick="showTab('funcionarios')">👥 Funcionários</button>
+                    <button class="nav-tab" onclick="showTab('vendedores')">💰 Vendedores</button>
+                    <button class="nav-tab" onclick="showTab('comissoes')">📈 Comissões</button>
+                    <button class="nav-tab" onclick="showTab('folha')">📊 Folha</button>
+                    <button class="nav-tab" onclick="showTab('ferias')">🌴 Férias</button>
+                    <button class="nav-tab" onclick="showTab('integracao')">🔄 Integração</button>
+                </div>
+                
+                <!-- Lista de Endpoints - Funcionários -->
+                <div id="funcionarios-endpoints" class="endpoint-list">
+                    <div class="endpoint-item" onclick="selectEndpoint('funcionarios', 'getAll')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/funcionarios</span>
+                        <div class="endpoint-desc">Listar todos</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('funcionarios', 'getAtivos')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/funcionarios/ativos</span>
+                        <div class="endpoint-desc">Listar ativos</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('funcionarios', 'getInativos')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/funcionarios/inativos</span>
+                        <div class="endpoint-desc">Listar inativos</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('funcionarios', 'getById')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/funcionarios/{id}</span>
+                        <div class="endpoint-desc">Buscar por ID</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('funcionarios', 'getByDepartamento')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/funcionarios/departamento/{depto}</span>
+                        <div class="endpoint-desc">Buscar por departamento</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('funcionarios', 'getVendedores')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/funcionarios/departamento/Vendas</span>
+                        <div class="endpoint-desc">Listar vendedores</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('funcionarios', 'create')">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-url">/api/funcionarios</span>
+                        <div class="endpoint-desc">Criar funcionário</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('funcionarios', 'update')">
+                        <span class="endpoint-method method-put">PUT</span>
+                        <span class="endpoint-url">/api/funcionarios/{id}</span>
+                        <div class="endpoint-desc">Atualizar</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('funcionarios', 'demitir')">
+                        <span class="endpoint-method method-patch">PATCH</span>
+                        <span class="endpoint-url">/api/funcionarios/{id}/demitir</span>
+                        <div class="endpoint-desc">Demitir</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('funcionarios', 'reativar')">
+                        <span class="endpoint-method method-patch">PATCH</span>
+                        <span class="endpoint-url">/api/funcionarios/{id}/reativar</span>
+                        <div class="endpoint-desc">Reativar</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('funcionarios', 'delete')">
+                        <span class="endpoint-method method-delete">DELETE</span>
+                        <span class="endpoint-url">/api/funcionarios/{id}</span>
+                        <div class="endpoint-desc">Deletar</div>
+                    </div>
+                </div>
+                
+                <!-- Lista de Endpoints - Vendedores -->
+                <div id="vendedores-endpoints" class="endpoint-list" style="display: none;">
+                    <div class="endpoint-item" onclick="selectEndpoint('vendedores', 'getAtivos')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/vendedores</span>
+                        <div class="endpoint-desc">Listar vendedores ativos</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('vendedores', 'getTodos')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/vendedores/todos</span>
+                        <div class="endpoint-desc">Listar todos vendedores</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('vendedores', 'getInativos')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/vendedores/inativos</span>
+                        <div class="endpoint-desc">Listar vendedores inativos</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('vendedores', 'getById')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/vendedores/{id}</span>
+                        <div class="endpoint-desc">Buscar vendedor por ID</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('vendedores', 'getByCodigo')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/vendedores/codigo/{codigo}</span>
+                        <div class="endpoint-desc">Buscar por código</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('vendedores', 'create')">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-url">/api/vendedores</span>
+                        <div class="endpoint-desc">Criar vendedor</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('vendedores', 'update')">
+                        <span class="endpoint-method method-put">PUT</span>
+                        <span class="endpoint-url">/api/vendedores/{id}</span>
+                        <div class="endpoint-desc">Atualizar vendedor</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('vendedores', 'createSimples')">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-url">/api/vendedores/simples?nome=João&email=joao@email.com</span>
+                        <div class="endpoint-desc">Criar vendedor simples</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('vendedores', 'ativar')">
+                        <span class="endpoint-method method-patch">PATCH</span>
+                        <span class="endpoint-url">/api/vendedores/{id}/ativar</span>
+                        <div class="endpoint-desc">Ativar vendedor</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('vendedores', 'inativar')">
+                        <span class="endpoint-method method-patch">PATCH</span>
+                        <span class="endpoint-url">/api/vendedores/{id}/inativar</span>
+                        <div class="endpoint-desc">Inativar vendedor</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('vendedores', 'configurarComissao')">
+                        <span class="endpoint-method method-patch">PATCH</span>
+                        <span class="endpoint-url">/api/vendedores/{id}/configurar-comissao?comissao=7.5</span>
+                        <div class="endpoint-desc">Configurar % comissão</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('vendedores', 'removerComissao')">
+                        <span class="endpoint-method method-patch">PATCH</span>
+                        <span class="endpoint-url">/api/vendedores/{id}/remover-comissao</span>
+                        <div class="endpoint-desc">Remover comissão</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('vendedores', 'atualizarMeta')">
+                        <span class="endpoint-method method-patch">PATCH</span>
+                        <span class="endpoint-url">/api/vendedores/{id}/meta?novaMeta=75000</span>
+                        <div class="endpoint-desc">Atualizar meta mensal</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('vendedores', 'estatisticas')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/vendedores/estatisticas</span>
+                        <div class="endpoint-desc">Estatísticas de vendedores</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('vendedores', 'relatorio')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/vendedores/relatorio</span>
+                        <div class="endpoint-desc">Relatório de vendedores</div>
+                    </div>
+                </div>
+                
+                <!-- Lista de Endpoints - Comissões -->
+                <div id="comissoes-endpoints" class="endpoint-list" style="display: none;">
+                    <div class="endpoint-item" onclick="selectEndpoint('comissoes', 'registrar')">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-url">/api/comissoes/registrar</span>
+                        <div class="endpoint-desc">Registrar venda e calcular comissão</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('comissoes', 'calcular')">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-url">/api/comissoes/calcular</span>
+                        <div class="endpoint-desc">Calcular comissão (prévia)</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('comissoes', 'listarPorVendedor')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/comissoes/vendedor/101</span>
+                        <div class="endpoint-desc">Listar comissões do vendedor</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('comissoes', 'listarPorVendedorPeriodo')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/comissoes/vendedor/101?mes=3&ano=2026</span>
+                        <div class="endpoint-desc">Comissões por período</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('comissoes', 'estatisticas')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/comissoes/estatisticas</span>
+                        <div class="endpoint-desc">Estatísticas gerais</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('comissoes', 'estatisticasPeriodo')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/comissoes/estatisticas?mes=3&ano=2026</span>
+                        <div class="endpoint-desc">Estatísticas por período</div>
+                    </div>
+                </div>
+                
+                <!-- Lista de Endpoints - Folha de Pagamento -->
+                <div id="folha-endpoints" class="endpoint-list" style="display: none;">
+                    <div class="endpoint-item" onclick="selectEndpoint('folha', 'processarFolha')">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-url">/api/folha/processar?mes=3&ano=2026</span>
+                        <div class="endpoint-desc">Processar folha mensal</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('folha', 'listarPorPeriodo')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/folha/periodo?mes=3&ano=2026</span>
+                        <div class="endpoint-desc">Listar folhas por período</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('folha', 'listarPorFuncionario')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/folha/funcionario/101</span>
+                        <div class="endpoint-desc">Folhas de um funcionário</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('folha', 'getById')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/folha/1</span>
+                        <div class="endpoint-desc">Buscar folha por ID</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('folha', 'adicionarComissao')">
+                        <span class="endpoint-method method-patch">PATCH</span>
+                        <span class="endpoint-url">/api/folha/1/adicionar-comissao?valor=3750</span>
+                        <div class="endpoint-desc">Adicionar comissão à folha</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('folha', 'marcarPago')">
+                        <span class="endpoint-method method-patch">PATCH</span>
+                        <span class="endpoint-url">/api/folha/1/marcar-pago</span>
+                        <div class="endpoint-desc">Marcar como pago</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('folha', 'cancelar')">
+                        <span class="endpoint-method method-patch">PATCH</span>
+                        <span class="endpoint-url">/api/folha/1/cancelar</span>
+                        <div class="endpoint-desc">Cancelar folha</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('folha', 'relatorio')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/folha/relatorio?mes=3&ano=2026</span>
+                        <div class="endpoint-desc">Relatório da folha</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('folha', 'estatisticas')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/folha/estatisticas?mes=3&ano=2026</span>
+                        <div class="endpoint-desc">Estatísticas da folha</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('folha', 'pendentesFinanceiro')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/folha/financeiro/pendentes?mes=3&ano=2026</span>
+                        <div class="endpoint-desc">Folhas pendentes (SF)</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('folha', 'confirmarPagamento')">
+                        <span class="endpoint-method method-patch">PATCH</span>
+                        <span class="endpoint-url">/api/folha/financeiro/confirmar-pagamento/1</span>
+                        <div class="endpoint-desc">Confirmar pagamento (SF)</div>
+                    </div>
+                </div>
+                
+                <!-- Lista de Endpoints - Férias -->
+                <div id="ferias-endpoints" class="endpoint-list" style="display: none;">
+                    <div class="endpoint-item" onclick="selectEndpoint('ferias', 'getAll')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/ferias</span>
+                        <div class="endpoint-desc">Listar todas as solicitações</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('ferias', 'getPendentes')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/ferias/pendentes</span>
+                        <div class="endpoint-desc">Listar solicitações pendentes</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('ferias', 'getAprovadas')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/ferias/aprovadas</span>
+                        <div class="endpoint-desc">Listar férias aprovadas</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('ferias', 'getProximas')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/ferias/proximas</span>
+                        <div class="endpoint-desc">Listar próximas férias</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('ferias', 'getById')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/ferias/1</span>
+                        <div class="endpoint-desc">Buscar por ID</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('ferias', 'getByFuncionario')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/ferias/funcionario/101</span>
+                        <div class="endpoint-desc">Férias de um funcionário</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('ferias', 'getByPeriodo')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/ferias/periodo?inicio=2026-03-01&fim=2026-03-31</span>
+                        <div class="endpoint-desc">Férias por período</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('ferias', 'solicitar')">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-url">/api/ferias/solicitar</span>
+                        <div class="endpoint-desc">Solicitar férias</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('ferias', 'aprovar')">
+                        <span class="endpoint-method method-patch">PATCH</span>
+                        <span class="endpoint-url">/api/ferias/1/aprovar</span>
+                        <div class="endpoint-desc">Aprovar solicitação</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('ferias', 'rejeitar')">
+                        <span class="endpoint-method method-patch">PATCH</span>
+                        <span class="endpoint-url">/api/ferias/1/rejeitar</span>
+                        <div class="endpoint-desc">Rejeitar solicitação</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('ferias', 'cancelar')">
+                        <span class="endpoint-method method-patch">PATCH</span>
+                        <span class="endpoint-url">/api/ferias/1/cancelar</span>
+                        <div class="endpoint-desc">Cancelar solicitação</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('ferias', 'estatisticas')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/ferias/estatisticas</span>
+                        <div class="endpoint-desc">Estatísticas de férias</div>
+                    </div>
+                </div>
+
+                <!-- 🔥 LISTA DE INTEGRAÇÃO ATUALIZADA -->
+                <div id="integracao-endpoints" class="endpoint-list" style="display: none;">
+                    <div class="endpoint-item" onclick="selectEndpoint('integracao', 'status')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/integracao/status</span>
+                        <div class="endpoint-desc">Status das APIs (online/offline)</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('integracao', 'testarVendas')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/integracao/testar/vendas</span>
+                        <div class="endpoint-desc">Ver dados da API de Vendas</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('integracao', 'testarComissoes')">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-url">/api/integracao/testar/comissoes</span>
+                        <div class="endpoint-desc">Ver dados da API de Comissões</div>
+                    </div>
+                    <div class="endpoint-item" onclick="selectEndpoint('integracao', 'importar')">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-url">/api/integracao/importar</span>
+                        <div class="endpoint-desc">IMPORTAR vendas (criar comissões)</div>
+                    </div>
+                </div>
+                
+                <!-- Informações Rápidas -->
+                <div class="quick-actions">
+                    <h4>⚡ Ações Rápidas</h4>
+                    <div class="quick-buttons">
+                        <button class="quick-btn" onclick="quickAction('listarFuncionarios')">👥 Funcionários</button>
+                        <button class="quick-btn" onclick="quickAction('listarVendedores')">💰 Vendedores</button>
+                        <button class="quick-btn" onclick="quickAction('processarFolhaAtual')">📊 Processar Folha</button>
+                        <button class="quick-btn" onclick="quickAction('listarFerias')">🌴 Férias</button>
+                        <button class="quick-btn" onclick="quickAction('testarIntegracao')">🔌 Ver Vendas API</button>
+                        <button class="quick-btn" onclick="quickAction('importarAgora')">📥 Importar Vendas</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Conteúdo Principal -->
+            <div class="main-content">
+                <!-- Painel de Requisição -->
+                <div class="request-panel">
+                    <h3>
+                        <span>📤 Requisição</span>
+                        <span id="method-badge" class="method-badge method-get">GET</span>
+                    </h3>
+                    
+                    <div class="form-group">
+                        <label>URL:</label>
+                        <input type="text" id="url" value="http://localhost:8081/api/funcionarios" readonly>
+                    </div>
+                    
+                    <div class="form-group" id="params-group" style="display: none;">
+                        <label>Parâmetros:</label>
+                        <div id="params-container"></div>
+                    </div>
+                    
+                    <div class="form-group" id="body-group" style="display: none;">
+                        <label>Body (JSON):</label>
+                        <textarea id="body" placeholder="JSON da requisição..."></textarea>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="enviarRequisicao()">
+                            🚀 Enviar Requisição
+                        </button>
+                        <button class="btn btn-danger" onclick="limparResultado()">
+                            🗑️ Limpar
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Painel de Resposta -->
+                <div class="response-panel">
+                    <div class="response-header">
+                        <h3>📥 Resposta</h3>
+                        <span id="status-badge" class="status-badge"></span>
+                    </div>
+                    <div id="response-body" class="response-body">
+                        Aguardando requisição...
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p>SRH API v1.0 - Sistema de Recursos Humanos © 2026</p>
+        </div>
+    </div>
+
+    <script>
+        // URL base
+        const BASE_URL = 'http://localhost:8081';
+        
+        // Configurações dos endpoints
+        const endpoints = {
+            funcionarios: {
+                getAll: { method: 'GET', url: '/api/funcionarios', body: null },
+                getAtivos: { method: 'GET', url: '/api/funcionarios/ativos', body: null },
+                getInativos: { method: 'GET', url: '/api/funcionarios/inativos', body: null },
+                getById: { method: 'GET', url: '/api/funcionarios/1', body: null },
+                getByDepartamento: { method: 'GET', url: '/api/funcionarios/departamento/TI', body: null },
+                getVendedores: { method: 'GET', url: '/api/funcionarios/departamento/Vendas', body: null },
+                create: {
+                    method: 'POST',
+                    url: '/api/funcionarios',
+                    body: `{
+    "nomeCompleto": "João Silva",
+    "dataNascimento": "1990-05-15",
+    "email": "joao.silva@email.com",
+    "telefone": "+258 84 123 4567",
+    "salarioBase": 45000.00,
+    "cargo": "Analista de Sistemas",
+    "departamento": "TI",
+    "dataContratacao": "2024-01-10",
+    "endereco": "Av. 24 de Julho, 123",
+    "tipoContrato": "CLT"
+}`
+                },
+                update: {
+                    method: 'PUT',
+                    url: '/api/funcionarios/1',
+                    body: `{
+    "nomeCompleto": "João Silva Atualizado",
+    "dataNascimento": "1990-05-15",
+    "email": "joao.silva@email.com",
+    "telefone": "+258 84 123 4567",
+    "salarioBase": 50000.00,
+    "cargo": "Analista Senior",
+    "departamento": "TI",
+    "dataContratacao": "2024-01-10",
+    "endereco": "Av. 24 de Julho, 123",
+    "tipoContrato": "CLT"
+}`
+                },
+                demitir: { method: 'PATCH', url: '/api/funcionarios/1/demitir', body: null },
+                reativar: { method: 'PATCH', url: '/api/funcionarios/1/reativar', body: null },
+                delete: { method: 'DELETE', url: '/api/funcionarios/1', body: null }
+            },
+            vendedores: {
+                getAtivos: { method: 'GET', url: '/api/vendedores', body: null },
+                getTodos: { method: 'GET', url: '/api/vendedores/todos', body: null },
+                getInativos: { method: 'GET', url: '/api/vendedores/inativos', body: null },
+                getById: { method: 'GET', url: '/api/vendedores/101', body: null },
+                getByCodigo: { method: 'GET', url: '/api/vendedores/codigo/VEND-101', body: null },
+                create: {
+                    method: 'POST',
+                    url: '/api/vendedores',
+                    body: `{
+    "nomeCompleto": "Maria Vendas",
+    "dataNascimento": "1988-08-20",
+    "email": "maria.vendas@email.com",
+    "telefone": "+258 84 987 6543",
+    "salarioBase": 40000.00,
+    "cargo": "Consultora de Vendas",
+    "departamento": "Vendas",
+    "dataContratacao": "2024-01-15",
+    "endereco": "Av. Marginal, 456",
+    "tipoContrato": "CLT",
+    "percentualComissao": 6.0,
+    "metaMensal": 60000.00,
+    "codigoVendedor": "VEND-102"
+}`
+                },
+                update: {
+                    method: 'PUT',
+                    url: '/api/vendedores/101',
+                    body: `{
+    "nomeCompleto": "Maria Vendas Atualizada",
+    "dataNascimento": "1988-08-20",
+    "email": "maria.vendas@email.com",
+    "telefone": "+258 84 987 6543",
+    "salarioBase": 45000.00,
+    "cargo": "Consultora Senior",
+    "departamento": "Vendas",
+    "dataContratacao": "2024-01-15",
+    "endereco": "Av. Marginal, 456",
+    "tipoContrato": "CLT",
+    "percentualComissao": 7.0,
+    "metaMensal": 70000.00,
+    "codigoVendedor": "VEND-102"
+}`
+                },
+                createSimples: { method: 'POST', url: '/api/vendedores/simples?nome=João&email=joao@email.com', body: null },
+                ativar: { method: 'PATCH', url: '/api/vendedores/101/ativar', body: null },
+                inativar: { method: 'PATCH', url: '/api/vendedores/101/inativar', body: null },
+                configurarComissao: { method: 'PATCH', url: '/api/vendedores/101/configurar-comissao?comissao=7.5', body: null },
+                removerComissao: { method: 'PATCH', url: '/api/vendedores/101/remover-comissao', body: null },
+                atualizarMeta: { method: 'PATCH', url: '/api/vendedores/101/meta?novaMeta=75000', body: null },
+                estatisticas: { method: 'GET', url: '/api/vendedores/estatisticas', body: null },
+                relatorio: { method: 'GET', url: '/api/vendedores/relatorio', body: null }
+            },
+            comissoes: {
+                registrar: {
+                    method: 'POST',
+                    url: '/api/comissoes/registrar',
+                    body: `{
+    "funcionarioId": 101,
+    "valorVenda": 75000.00,
+    "mes": 3,
+    "ano": 2026,
+    "observacao": "Venda de equipamentos",
+    "calcularDetalhado": true
+}`
+                },
+                calcular: {
+                    method: 'POST',
+                    url: '/api/comissoes/calcular',
+                    body: `{
+    "funcionarioId": 101,
+    "valorVenda": 75000.00,
+    "mes": 3,
+    "ano": 2026,
+    "calcularDetalhado": true
+}`
+                },
+                listarPorVendedor: { method: 'GET', url: '/api/comissoes/vendedor/101', body: null },
+                listarPorVendedorPeriodo: { method: 'GET', url: '/api/comissoes/vendedor/101?mes=3&ano=2026', body: null },
+                estatisticas: { method: 'GET', url: '/api/comissoes/estatisticas', body: null },
+                estatisticasPeriodo: { method: 'GET', url: '/api/comissoes/estatisticas?mes=3&ano=2026', body: null }
+            },
+            folha: {
+                processarFolha: { method: 'POST', url: '/api/folha/processar?mes=3&ano=2026', body: null },
+                listarPorPeriodo: { method: 'GET', url: '/api/folha/periodo?mes=3&ano=2026', body: null },
+                listarPorFuncionario: { method: 'GET', url: '/api/folha/funcionario/101', body: null },
+                getById: { method: 'GET', url: '/api/folha/1', body: null },
+                adicionarComissao: { method: 'PATCH', url: '/api/folha/1/adicionar-comissao?valor=3750', body: null },
+                marcarPago: { method: 'PATCH', url: '/api/folha/1/marcar-pago', body: null },
+                cancelar: { method: 'PATCH', url: '/api/folha/1/cancelar', body: null },
+                relatorio: { method: 'GET', url: '/api/folha/relatorio?mes=3&ano=2026', body: null },
+                estatisticas: { method: 'GET', url: '/api/folha/estatisticas?mes=3&ano=2026', body: null },
+                pendentesFinanceiro: { method: 'GET', url: '/api/folha/financeiro/pendentes?mes=3&ano=2026', body: null },
+                confirmarPagamento: { method: 'PATCH', url: '/api/folha/financeiro/confirmar-pagamento/1', body: null }
+            },
+            ferias: {
+                getAll: { method: 'GET', url: '/api/ferias', body: null },
+                getPendentes: { method: 'GET', url: '/api/ferias/pendentes', body: null },
+                getAprovadas: { method: 'GET', url: '/api/ferias/aprovadas', body: null },
+                getProximas: { method: 'GET', url: '/api/ferias/proximas', body: null },
+                getById: { method: 'GET', url: '/api/ferias/1', body: null },
+                getByFuncionario: { method: 'GET', url: '/api/ferias/funcionario/101', body: null },
+                getByPeriodo: { method: 'GET', url: '/api/ferias/periodo?inicio=2026-03-01&fim=2026-03-31', body: null },
+                solicitar: {
+                    method: 'POST',
+                    url: '/api/ferias/solicitar',
+                    body: `{
+    "funcionarioId": 101,
+    "dataInicio": "2026-04-01",
+    "dataFim": "2026-04-15",
+    "observacao": "Férias de abril"
+}`
+                },
+                aprovar: { method: 'PATCH', url: '/api/ferias/1/aprovar', body: null },
+                rejeitar: { method: 'PATCH', url: '/api/ferias/1/rejeitar', body: null },
+                cancelar: { method: 'PATCH', url: '/api/ferias/1/cancelar', body: null },
+                estatisticas: { method: 'GET', url: '/api/ferias/estatisticas', body: null }
+            },
+            // 🔥 ENDPOINTS DE INTEGRAÇÃO ATUALIZADOS
+            integracao: {
+                status: { 
+                    method: 'GET', 
+                    url: '/api/integracao/status', 
+                    body: null,
+                    desc: 'Status das APIs (online/offline)'
+                },
+                testarVendas: { 
+                    method: 'GET', 
+                    url: '/api/integracao/testar/vendas', 
+                    body: null,
+                    desc: 'Ver dados completos da API de Vendas'
+                },
+                testarComissoes: { 
+                    method: 'GET', 
+                    url: '/api/integracao/testar/comissoes', 
+                    body: null,
+                    desc: 'Ver dados completos da API de Comissões'
+                },
+                importar: { 
+                    method: 'POST', 
+                    url: '/api/integracao/importar', 
+                    body: null,
+                    desc: 'IMPORTAR vendas (criar comissões no banco)'
+                }
+            }
+        };
+        
+        let currentTab = 'funcionarios';
+        let currentEndpoint = 'getAll';
+        
+        // Carregar estatísticas ao iniciar
+        document.addEventListener('DOMContentLoaded', function() {
+            carregarEstatisticas();
+            verificarStatusIntegracao();
+        });
+
+        async function carregarEstatisticas() {
+            try {
+                const response = await fetch(BASE_URL + '/api/funcionarios');
+                if (response.ok) {
+                    const funcionarios = await response.json();
+                    const total = funcionarios.length;
+                    const ativos = funcionarios.filter(f => f.ativo === true).length;
+                    const inativos = total - ativos;
+                    
+                    document.getElementById('totalFuncionarios').textContent = total;
+                    document.getElementById('funcionariosAtivos').textContent = ativos;
+                    document.getElementById('funcionariosInativos').textContent = inativos;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar estatísticas:', error);
+            }
+        }
+        
+        async function verificarStatusIntegracao() {
+            try {
+                const response = await fetch(BASE_URL + '/api/integracao/status');
+                const texto = await response.text();
+                document.getElementById('apiVendasStatus').innerHTML = texto.includes('✅') ? '✅' : '⚠️';
+                document.getElementById('apiVendasStatus').title = texto;
+            } catch (error) {
+                document.getElementById('apiVendasStatus').innerHTML = '❌';
+                document.getElementById('apiVendasStatus').title = 'Erro de conexão';
+            }
+        }
+        
+        function showTab(tab) {
+            currentTab = tab;
+            
+            // Atualizar tabs
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Mostrar endpoints corretos
+            document.getElementById('funcionarios-endpoints').style.display = tab === 'funcionarios' ? 'block' : 'none';
+            document.getElementById('vendedores-endpoints').style.display = tab === 'vendedores' ? 'block' : 'none';
+            document.getElementById('comissoes-endpoints').style.display = tab === 'comissoes' ? 'block' : 'none';
+            document.getElementById('folha-endpoints').style.display = tab === 'folha' ? 'block' : 'none';
+            document.getElementById('ferias-endpoints').style.display = tab === 'ferias' ? 'block' : 'none';
+            document.getElementById('integracao-endpoints').style.display = tab === 'integracao' ? 'block' : 'none';
+            
+            // Selecionar primeiro endpoint da tab
+            let firstEndpoint = 'getAll';
+            if (tab === 'vendedores') firstEndpoint = 'getAtivos';
+            if (tab === 'comissoes') firstEndpoint = 'registrar';
+            if (tab === 'folha') firstEndpoint = 'processarFolha';
+            if (tab === 'ferias') firstEndpoint = 'getAll';
+            if (tab === 'integracao') firstEndpoint = 'status';
+            selectEndpoint(tab, firstEndpoint);
+        }
+        
+        function selectEndpoint(tab, endpoint) {
+            currentTab = tab;
+            currentEndpoint = endpoint;
+            
+            // Remover seleção anterior
+            document.querySelectorAll('.endpoint-item').forEach(e => e.classList.remove('selected'));
+            
+            // Adicionar seleção ao item clicado
+            if (event && event.target.closest('.endpoint-item')) {
+                event.target.closest('.endpoint-item').classList.add('selected');
+            }
+            
+            // Atualizar formulário
+            const config = endpoints[tab][endpoint];
+            if (!config) return;
+            
+            document.getElementById('url').value = BASE_URL + config.url;
+            
+            const methodBadge = document.getElementById('method-badge');
+            methodBadge.className = `method-badge method-${config.method.toLowerCase()}`;
+            methodBadge.textContent = config.method;
+            
+            if (config.body) {
+                document.getElementById('body-group').style.display = 'block';
+                document.getElementById('body').value = config.body;
+            } else {
+                document.getElementById('body-group').style.display = 'none';
+                document.getElementById('body').value = '';
+            }
+        }
+        
+        async function enviarRequisicao() {
+            const metodo = document.getElementById('method-badge').textContent;
+            const url = document.getElementById('url').value;
+            const body = document.getElementById('body').value;
+            const responseBody = document.getElementById('response-body');
+            const statusBadge = document.getElementById('status-badge');
+            
+            responseBody.innerHTML = '<span class="loading"></span> Aguardando resposta...';
+            statusBadge.innerHTML = '';
+            statusBadge.className = 'status-badge';
+            
+            try {
+                const options = {
+                    method: metodo,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                };
+                
+                if (body && (metodo === 'POST' || metodo === 'PUT' || metodo === 'PATCH')) {
+                    options.body = body;
+                }
+                
+                const response = await fetch(url, options);
+                const status = response.status;
+                
+                let data;
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    data = await response.text();
+                }
+                
+                // Atualizar status
+                statusBadge.innerHTML = `${status} ${response.statusText}`;
+                statusBadge.classList.add(status >= 200 && status < 300 ? 'status-success' : 'status-error');
+                
+                // Mostrar resultado
+                responseBody.innerHTML = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+                
+                // Atualizar estatísticas se for uma requisição de funcionários
+                if (url.includes('/api/funcionarios') && metodo === 'GET') {
+                    carregarEstatisticas();
+                }
+                
+                // Atualizar status da integração
+                if (url.includes('/api/integracao/status')) {
+                    verificarStatusIntegracao();
+                }
+                
+            } catch (error) {
+                statusBadge.innerHTML = 'ERRO';
+                statusBadge.classList.add('status-error');
+                responseBody.innerHTML = '❌ Erro: ' + error.message;
+            }
+        }
+        
+        function limparResultado() {
+            document.getElementById('response-body').innerHTML = 'Resultado limpo. Selecione um endpoint e envie uma requisição.';
+            document.getElementById('status-badge').innerHTML = '';
+            document.getElementById('status-badge').className = 'status-badge';
+        }
+        
+        function quickAction(action) {
+            if (action === 'listarFuncionarios') {
+                showTab('funcionarios');
+                selectEndpoint('funcionarios', 'getAll');
+                enviarRequisicao();
+            } else if (action === 'listarVendedores') {
+                showTab('vendedores');
+                selectEndpoint('vendedores', 'getAtivos');
+                enviarRequisicao();
+            } else if (action === 'processarFolhaAtual') {
+                showTab('folha');
+                selectEndpoint('folha', 'processarFolha');
+                enviarRequisicao();
+            } else if (action === 'listarFerias') {
+                showTab('ferias');
+                selectEndpoint('ferias', 'getAll');
+                enviarRequisicao();
+            } else if (action === 'testarIntegracao') {
+                showTab('integracao');
+                selectEndpoint('integracao', 'testarVendas');
+                enviarRequisicao();
+            } else if (action === 'importarAgora') {
+                showTab('integracao');
+                selectEndpoint('integracao', 'importar');
+                enviarRequisicao();
+            }
+        }
+        
+        function mostrarToast(mensagem, tipo = 'info') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toastId = 'toast-' + Date.now();
+            
+            const bgColor = {
+                'success': 'bg-success',
+                'danger': 'bg-danger',
+                'warning': 'bg-warning',
+                'info': 'bg-info'
+            }[tipo] || 'bg-info';
+            
+            const html = `
+                <div id="${toastId}" class="toast align-items-center text-white ${bgColor} border-0" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body">${mensagem}</div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+            
+            toastContainer.insertAdjacentHTML('beforeend', html);
+            
+            const toastElement = document.getElementById(toastId);
+            const toast = new bootstrap.Toast ? new bootstrap.Toast(toastElement, { delay: 3000 }) : null;
+            if (toast) toast.show();
+            
+            setTimeout(() => {
+                const element = document.getElementById(toastId);
+                if (element) element.remove();
+            }, 3000);
+        }
+        
+        // Selecionar primeiro endpoint ao carregar
+        window.onload = function() {
+            selectEndpoint('funcionarios', 'getAll');
+        };
+    </script>
+</body>
+</html>
