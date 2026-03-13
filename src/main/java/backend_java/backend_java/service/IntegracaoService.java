@@ -4,6 +4,7 @@ package backend_java.backend_java.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -80,23 +81,44 @@ public class IntegracaoService {
         return sb.toString();
     }
 
-    // ========== MÉTODO PRINCIPAL DE IMPORTAÇÃO ==========
+        // ========== MÉTODO PRINCIPAL DE IMPORTAÇÃO COM LIMPEZA ==========
 
     /**
      * Importa as vendas da API e registra comissões no banco de dados
+     * ANTES de importar, limpa todas as comissões existentes
      */
     @Transactional
     public String importarVendas() {
         StringBuilder relatorio = new StringBuilder();
-        relatorio.append("🚀 INICIANDO IMPORTAÇÃO DE VENDAS\n");
-        relatorio.append("================================\n");
+        relatorio.append("🚀 INICIANDO IMPORTAÇÃO DE VENDAS (COM LIMPEZA)\n");
+        relatorio.append("================================================\n");
 
         try {
-            // 1. Buscar dados da API
-            String json = restTemplate.getForObject(API_VENDAS, String.class);
-            relatorio.append("📦 Vendas recebidas: ").append(json.length()).append(" caracteres\n");
+            // ==============================================
+            // PASSO 1: LIMPAR COMISSÕES EXISTENTES
+            // ==============================================
+            relatorio.append("🧹 Limpando comissões existentes...\n");
+            
+            List<?> comissoesAntigas = comissaoRepository.findAll();
+            int totalAntigo = comissoesAntigas.size();
+            
+            if (totalAntigo > 0) {
+                comissaoRepository.deleteAll();
+                relatorio.append("   ✅ ").append(totalAntigo).append(" comissões removidas.\n\n");
+            } else {
+                relatorio.append("   ℹ️ Nenhuma comissão encontrada para remover.\n\n");
+            }
 
-            // 2. Converter JSON para árvore de nós
+            // ==============================================
+            // PASSO 2: BUSCAR DADOS DA API
+            // ==============================================
+            relatorio.append("📡 Buscando vendas da API...\n");
+            String json = restTemplate.getForObject(API_VENDAS, String.class);
+            relatorio.append("   ✅ Vendas recebidas: ").append(json.length()).append(" caracteres\n\n");
+
+            // ==============================================
+            // PASSO 3: CONVERTER JSON PARA ÁRVORE DE NÓS
+            // ==============================================
             JsonNode root = objectMapper.readTree(json);
 
             if (!root.isArray()) {
@@ -106,39 +128,36 @@ public class IntegracaoService {
             int importadas = 0;
             int ignoradas = 0;
 
-            // 3. Percorrer cada venda
+            // ==============================================
+            // PASSO 4: PERCORRER CADA VENDA
+            // ==============================================
             for (JsonNode venda : root) {
                 Long id = venda.has("id") ? venda.get("id").asLong() : null;
                 Long vendedorId = venda.has("vendedor_id") && !venda.get("vendedor_id").isNull()
                         ? venda.get("vendedor_id").asLong() : null;
 
-                relatorio.append("\n📦 Processando venda #").append(id);
-
-                // 3.1 Verificar se tem vendedor
+                // 4.1 Verificar se tem vendedor
                 if (vendedorId == null) {
-                    relatorio.append(" → ⏭️ Ignorada (sem vendedor)\n");
                     ignoradas++;
                     continue;
                 }
 
-                // 3.2 Verificar se vendedor existe no banco
+                // 4.2 Verificar se vendedor existe no banco
                 var funcionarioOpt = funcionarioRepository.findById(vendedorId);
                 if (funcionarioOpt.isEmpty()) {
-                    relatorio.append(" → ⏭️ Vendedor ID ").append(vendedorId).append(" não encontrado no SRH\n");
                     ignoradas++;
                     continue;
                 }
 
                 var funcionario = funcionarioOpt.get();
 
-                // 3.3 Verificar se é do departamento Vendas
+                // 4.3 Verificar se é do departamento Vendas
                 if (!"Vendas".equalsIgnoreCase(funcionario.getDepartamento())) {
-                    relatorio.append(" → ⏭️ Funcionário não é vendedor\n");
                     ignoradas++;
                     continue;
                 }
 
-                // 3.4 Extrair dados da venda
+                // 4.4 Extrair dados da venda
                 Double totalVenda = venda.get("total_venda").asDouble();
                 Double comissaoValor = venda.get("comissao_valor").asDouble();
                 Double percentual = venda.has("comissao_percentual") ? venda.get("comissao_percentual").asDouble() : 5.0;
@@ -149,18 +168,7 @@ public class IntegracaoService {
                 int mes = dataVenda.getMonthValue();
                 int ano = dataVenda.getYear();
 
-                // 3.5 Verificar duplicata (pela observação)
-                String idExterno = "API_ID:" + id;
-                boolean jaExiste = comissaoRepository.findAll().stream()
-                        .anyMatch(c -> c.getObservacao() != null && c.getObservacao().contains(idExterno));
-
-                if (jaExiste) {
-                    relatorio.append(" → ⏭️ Venda já importada anteriormente\n");
-                    ignoradas++;
-                    continue;
-                }
-
-                // 3.6 Criar e salvar comissão
+                // 4.5 Criar e salvar comissão
                 backend_java.backend_java.model.Comissao comissao = new backend_java.backend_java.model.Comissao();
                 comissao.setFuncionario(funcionario);
                 comissao.setValorVenda(totalVenda);
@@ -179,17 +187,17 @@ public class IntegracaoService {
                 // Salvar no banco
                 comissaoRepository.save(comissao);
                 importadas++;
-
-                relatorio.append(" → ✅ Comissão de ").append(comissaoValor)
-                        .append(" MTn para ").append(funcionario.getNomeCompleto()).append("\n");
             }
 
-            // 4. Resumo final
+            // ==============================================
+            // PASSO 5: RESUMO FINAL
+            // ==============================================
             relatorio.append("\n================================\n");
             relatorio.append("📊 RESUMO DA IMPORTAÇÃO:\n");
-            relatorio.append("   Total de vendas: ").append(root.size()).append("\n");
+            relatorio.append("   Total de vendas processadas: ").append(root.size()).append("\n");
             relatorio.append("   Comissões importadas: ").append(importadas).append("\n");
             relatorio.append("   Vendas ignoradas: ").append(ignoradas).append("\n");
+            relatorio.append("   Comissões antigas removidas: ").append(totalAntigo).append("\n");
             relatorio.append("================================\n");
 
         } catch (Exception e) {
@@ -199,6 +207,9 @@ public class IntegracaoService {
 
         return relatorio.toString();
     }
+
+
+    
 
     // ========== MÉTODO AUXILIAR ==========
 

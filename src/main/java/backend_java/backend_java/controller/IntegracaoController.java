@@ -36,6 +36,6 @@ public class IntegracaoController {
     // ✅ IMPORTAR - Busca vendas e cria comissões no banco
     @PostMapping("/importar")
     public String importarVendas() {
-        return integracaoService.importarVendas();
+        return integracaoService.importarVendas(); // 🔥 NOME CORRETO (sem "ComLimpeza")
     }
 }
