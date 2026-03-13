@@ -763,7 +763,7 @@
                     </div>
                 </div>
 
-                <!-- 🔥 LISTA DE INTEGRAÇÃO ATUALIZADA -->
+                <!-- Lista de Endpoints - Integração -->
                 <div id="integracao-endpoints" class="endpoint-list" style="display: none;">
                     <div class="endpoint-item" onclick="selectEndpoint('integracao', 'status')">
                         <span class="endpoint-method method-get">GET</span>
@@ -812,7 +812,7 @@
                     
                     <div class="form-group">
                         <label>URL:</label>
-                        <input type="text" id="url" value="http://localhost:8081/api/funcionarios" readonly>
+                        <input type="text" id="url" value="https://srh-api.onrender.com/api/funcionarios" readonly>
                     </div>
                     
                     <div class="form-group" id="params-group" style="display: none;">
@@ -855,8 +855,8 @@
     </div>
 
     <script>
-        // URL base
-        const BASE_URL = 'http://localhost:8081';
+        // URL base da API no Render (CORRIGIDA para produção)
+        const BASE_URL = 'https://srh-api.onrender.com';
         
         // Configurações dos endpoints
         const endpoints = {
@@ -1021,7 +1021,6 @@
                 cancelar: { method: 'PATCH', url: '/api/ferias/1/cancelar', body: null },
                 estatisticas: { method: 'GET', url: '/api/ferias/estatisticas', body: null }
             },
-            // 🔥 ENDPOINTS DE INTEGRAÇÃO ATUALIZADOS
             integracao: {
                 status: { 
                     method: 'GET', 
